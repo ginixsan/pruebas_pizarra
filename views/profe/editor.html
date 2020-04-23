@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PRUEBAS PARA EL EDITOR DEL CONTENIDO</title>
+  <link href="https://fonts.googleapis.com/css?family=PT+Mono" rel="stylesheet">
+  <link href="assets/estilos.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js" integrity="sha384-NaWTHo/8YCBYJ59830LTz/P4aQZK1sS0SneOgAvhsIl3zBu8r9RevNg5lHCHAuQ/" crossorigin="anonymous"></script>
+  <script src="assets/json-preview.js"></script>
+  <script src="assets/dom-to-image.min.js"></script>
+  <script src="assets/socket.io.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+</head>
+<body>
+  <div class="pizarra">
+    <div class="pizarra__header">
+
+      <div class="pizarra__header-menu">
+      </div>
+    </div>
+    <div class="pizarra__content _pizarra__content--small">
+      <div id="editorjs" class="editor"></div>
+      <div class='botonera'>
+        <div class="pizarra__button" id="saveButton">
+          GUARDAR
+        </div>
+        <div class="pizarra__button" id="deleteButton">
+          BORRAR
+        </div>
+        <div class="pizarra__button" id="publicaButton">
+          PUBLICAR
+        </div>
+      </div>
+    </div>
+    <div class="pizarra__output">
+      <pre class="pizarra__output-content" id="output"></pre>
+
+      
+    </div>
+  </div>
+
+ 
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script><!-- Header -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/simple-image@latest"></script><!-- Image -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@latest"></script><!-- Delimiter -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script><!-- List -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest"></script><!-- Checklist -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script><!-- Quote -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/code@latest"></script><!-- Code -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/embed@latest"></script><!-- Embed -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/table@latest"></script><!-- Table -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/link@latest"></script><!-- Link -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/warning@latest"></script><!-- Warning -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@latest"></script><!-- Marker -->
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@latest"></script><!-- Inline Code -->
+
+  <script src="./editor.js"></script>
+
+  <script>
+   
+    const saveButton = document.getElementById('saveButton');
+    const publicaButton=document.getElementById('publicaButton');
+    const deleteButton=document.getElementById('deleteButton');
+    var socket;
+    var editor = new EditorJS({
+      holder: 'editorjs',
+      tools: {
+        
+        header: {
+          class: Header,
+          inlineToolbar: ['link'],
+          config: {
+            placeholder: 'Header'
+          },
+          shortcut: 'CMD+SHIFT+H'
+        },
+        image: SimpleImage,
+
+        list: {
+          class: List,
+          inlineToolbar: true,
+          shortcut: 'CMD+SHIFT+L'
+        },
+
+        checklist: {
+          class: Checklist,
+          inlineToolbar: true,
+        },
+
+        quote: {
+          class: Quote,
+          inlineToolbar: true,
+          config: {
+            quotePlaceholder: 'Enter a quote',
+            captionPlaceholder: 'Quote\'s author',
+          },
+          shortcut: 'CMD+SHIFT+O'
+        },
+
+        warning: {
+        class: Warning,
+        inlineToolbar: true,
+        shortcut: 'CMD+SHIFT+W',
+        config: {
+          titlePlaceholder: 'Title',
+          messagePlaceholder: 'Message',
+          }
+        },
+
+        marker: {
+          class:  Marker,
+          shortcut: 'CMD+SHIFT+M'
+        },
+
+        code: {
+          class:  CodeTool,
+          shortcut: 'CMD+SHIFT+C'
+        },
+
+        delimiter: Delimiter,
+
+        inlineCode: {
+          class: InlineCode,
+          shortcut: 'CMD+SHIFT+C'
+        },
+
+        linkTool: LinkTool,
+
+        embed: Embed,
+
+        table: {
+          class: Table,
+          inlineToolbar: true,
+          shortcut: 'CMD+ALT+T'
+        },
+
+      },
+     initialBlock: 'paragraph',
+
+     data:{
+      blocks: [
+          {
+            type: "header",
+            data: {
+              text: "ESTE ES EL EDITOR QUE HE PROGRAMADO",
+              level: 2
+            }
+          },
+          {
+            type : 'paragraph',
+            data : {
+              text : 'Aqui iran las cosas que tengan que ir'
+            }
+          },
+          {
+            type: "header",
+            data: {
+              text: "POR EJEMPPLO",
+              level: 3
+            }
+          },
+          {
+            type : 'list',
+            data : {
+              items : [
+                'una lista',
+                'con cada uno de sus puntos',
+              ],
+              style: 'unordered'
+            }
+          },
+          {
+            type: "header",
+            data: {
+              text: "PERO PODRIAN SER OTRAS COSAS",
+              level: 3
+            }
+          }
+     ]
+    },
+      onReady: function(){
+         socket = io('http://localhost:3000',{ query: "tipo=profe" });
+        socket.on('connect', function(){
+          editor.save().then((outputData) => {
+            console.log('Article data: ', outputData);
+            socket.emit('actualiza', outputData);
+          }).catch((error) => {
+            console.log('Saving failed: ', error)
+          });
+        });
+        socket.on('actualizacliente', function(data){
+          console.log(data)
+        });
+        socket.on('disconnect', function(){});
+        saveButton.click();
+      },
+      onChange: function() {
+        console.log('something changed');
+         editor.save().then((outputData) => {
+            console.log('Article data: ', outputData);
+            socket.emit('actualiza', outputData);
+          }).catch((error) => {
+            console.log('Saving failed: ', error)
+          });
+      }
+    });
+
+   publicaButton.addEventListener('click',function()
+   {
+    const textoImprime = document.getElementsByClassName('codex-editor__redactor')[0].innerHTML;
+    console.log(textoImprime);
+    domtoimage.toJpeg(document.getElementById('editorjs'), { quality: 0.95 })
+    .then(function (dataUrl) {
+        var link = document.createElement('a');
+        link.download = 'my-image-name.jpeg';
+        link.href = dataUrl;
+        link.click();
+    });
+    /*var doc = new jsPDF();
+    var specialElementHandlers = {
+        '#editor': function (element, renderer) {
+            return true;
+        }
+    };
+
+
+    doc.fromHTML(textoImprime, 15, 15, {
+        'width': 170,
+            'elementHandlers': specialElementHandlers
+    },function(){
+      doc.save('sample-file.pdf');
+    });*/
+    
+      
+   });
+   deleteButton.addEventListener('click',function()
+    {
+      console.log('borro');
+      editor.clear();
+    });
+    saveButton.addEventListener('click', function () {
+      editor.save().then((savedData) => {
+            console.log('Article data: ', savedData);
+            socket.emit('actualiza', savedData);
+          });
+    });
+  </script>
+</body>
+</html>
